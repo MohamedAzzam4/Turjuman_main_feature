@@ -97,7 +97,7 @@ def build_translation_messages(word: str, context: str) -> List[dict]:
                 "- The English definition of the original word.",
                 "- An example sentence using the original word in English.",
                 "Your output must be a valid JSON object exactly matching the following Pydantic schema:",
-                f"json\n{schema_json_string}\n", # تضمين الـ schema في الـ prompt
+                f"```json\n{schema_json_string}\n```", # تضمين الـ schema في الـ prompt
                 "Do not add any extra text before or after the JSON.",
             ])
         },
@@ -212,7 +212,7 @@ async def translate_word_endpoint(input_data: TranslationInput):
             status_code=500,
             detail=f"An internal error occurred during translation: {e}"
         )
-if __name__ == "_main_":
+if __name__ == "__main__":
     # حاول تقرأ البورت من متغير البيئة PORT، لو مش موجود استخدم 8080
     port = int(os.environ.get("PORT", 8080))
     # شغل السيرفر باستخدام uvicorn
