@@ -159,7 +159,7 @@ app.add_middleware(
 @app.get("/")
 async def read_root():
     """Root endpoint returning basic API info."""
-    return {"message": "Translator API using Gemini 1.5 Flash is running.", "version": "1.0.0"}
+    return {"message": "Welcome ;) Translator API For Turjuman is running.", "version": "1.0.0"}
 
 @app.post("/translate", response_model=Translation)
 async def translate_word_endpoint(input_data: TranslationInput):
