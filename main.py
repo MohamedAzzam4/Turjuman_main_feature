@@ -212,7 +212,7 @@ async def translate_word_endpoint(input_data: TranslationInput):
             status_code=500,
             detail=f"An internal error occurred during translation: {e}"
         )
-if _name_ == "_main_":
+if __name__ == "_main_":
     # حاول تقرأ البورت من متغير البيئة PORT، لو مش موجود استخدم 8080
     port = int(os.environ.get("PORT", 8080))
     # شغل السيرفر باستخدام uvicorn
