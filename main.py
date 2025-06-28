@@ -31,7 +31,7 @@ class TranslationInput(BaseModel):
 
 # نموذج لمخرجات الـ API (نفس النموذج اللي عرفته)
 class Translation(BaseModel):
-    translated_word: str = Field(
+   translation : str = Field(
         ...,
         min_length=1, # يمكن تكون كلمة واحدة
         max_length=255,
