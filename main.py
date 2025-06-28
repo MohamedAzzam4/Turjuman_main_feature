@@ -21,8 +21,8 @@ class TranslationInput(BaseModel):
         max_length=100,
         description="The English word to translate."
     )
-    context: str = Field(
-        ...,
+    context : Optional[str] = Field(
+        None,
         min_length=0,
         max_length=1000,
         description="The context paragraph where the word appears., it may contains no context just a simple word need to be transalted"
@@ -78,10 +78,13 @@ def parse_json(text):
             print(f"json_repair failed: {e}") # طباعة الخطأ للمساعدة في Debug
             return None
 
-def build_translation_messages(word: str, context: str = None) -> List[dict]:
+def build_translation_messages(word: str, context: Optional[str] = None) -> List[dict]:
     """Builds the message list for the Gemini API call."""
     # استخدام model_json_schema() في Pydantic V2 للحصول على الـ schema
     schema_json_string = json.dumps(Translation.model_json_schema(), ensure_ascii=False, indent=2)
+    user_message = f"Word: {word.strip()}"
+    if context:
+        user_message = f"Context: {context.strip()}\n" + user_message
 
     messages = [
         {
@@ -103,7 +106,7 @@ def build_translation_messages(word: str, context: str = None) -> List[dict]:
         },
         {
             "role": "user",
-            "content": f"Context: {context.strip()}\nWord: {word.strip()}"
+            "content": user_message
         }
     ]
     return messages
@@ -164,7 +167,7 @@ async def read_root():
 @app.post("/translate", response_model=Translation)
 async def translate_word_endpoint(input_data: TranslationInput):
     """
-    Translates an English word to Arabic based on context using the Turjuman model.
+    Translates an English word to Arabic based on context using the Turjuman Model.
 
     Expects a JSON body with 'word' and 'context'.
     Returns a JSON object with translation details, synonyms, definition, and example usage.
