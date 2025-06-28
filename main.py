@@ -164,7 +164,7 @@ async def read_root():
 @app.post("/translate", response_model=Translation)
 async def translate_word_endpoint(input_data: TranslationInput):
     """
-    Translates an English word to Arabic based on context using the Gemini 1.5 Flash model.
+    Translates an English word to Arabic based on context using the Turjuman model.
 
     Expects a JSON body with 'word' and 'context'.
     Returns a JSON object with translation details, synonyms, definition, and example usage.
