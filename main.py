@@ -23,9 +23,9 @@ class TranslationInput(BaseModel):
     )
     context: str = Field(
         ...,
-        min_length=10,
+        min_length=0,
         max_length=1000,
-        description="The context paragraph where the word appears."
+        description="The context paragraph where the word appears., it may contains no context just a simple word need to be transalted"
     )
 
 
@@ -78,7 +78,7 @@ def parse_json(text):
             print(f"json_repair failed: {e}") # طباعة الخطأ للمساعدة في Debug
             return None
 
-def build_translation_messages(word: str, context: str) -> List[dict]:
+def build_translation_messages(word: str, context: str = None) -> List[dict]:
     """Builds the message list for the Gemini API call."""
     # استخدام model_json_schema() في Pydantic V2 للحصول على الـ schema
     schema_json_string = json.dumps(Translation.model_json_schema(), ensure_ascii=False, indent=2)
@@ -88,7 +88,7 @@ def build_translation_messages(word: str, context: str) -> List[dict]:
             "role": "system",
             "content": "\n".join([
                 "You are a professional translator from English to Arabic.",
-                "You will be provided with an English word and its context.",
+                "You will be provided with an English word and its context is optional.",
                 "Translate the word based on the context.",
                 "Provide:",
                 "- The translated word in Arabic.",
