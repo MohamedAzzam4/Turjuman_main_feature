@@ -15,12 +15,27 @@ import uvicorn
 
 # نموذج لمدخلات الـ API
 class TranslationInput(BaseModel):
+    source_language: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="The source language needed to be translated from."
+    )
+    
+    target_language: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="The Targeted language needed to be translated to."
+    )
+    
     word: str = Field(
         ...,
         min_length=1,
         max_length=100,
-        description="The English word to translate."
+        description="The word to translate."
     )
+    
     context : Optional[str] = Field(
         None,
         min_length=0,
@@ -78,11 +93,11 @@ def parse_json(text):
             print(f"json_repair failed: {e}") # طباعة الخطأ للمساعدة في Debug
             return None
 
-def build_translation_messages(word: str, context: Optional[str] = None) -> List[dict]:
+def build_translation_messages(word: str, source_language: str, target_language: str, context: Optional[str] = None) -> List[dict]:
     """Builds the message list for the Gemini API call."""
     # استخدام model_json_schema() في Pydantic V2 للحصول على الـ schema
     schema_json_string = json.dumps(Translation.model_json_schema(), ensure_ascii=False, indent=2)
-    user_message = f"Word: {word.strip()}"
+    user_message = f"source_language: {target_language.strip()}, target_Language: {target_language.strip()} , Word: {word.strip()}"
     if context:
         user_message = f"Context: {context.strip()}\n" + user_message
 
@@ -90,15 +105,15 @@ def build_translation_messages(word: str, context: Optional[str] = None) -> List
         {
             "role": "system",
             "content": "\n".join([
-                "You are a professional translator from English to Arabic.",
-                "You will be provided with an English word and its context is optional.",
+                f"You are a professional translator from {source_language} to {target_language}.",
+                f"You will be provided with a word in {source_language} and its context is optional.",
                 "Translate the word based on the context.",
                 "Provide:",
-                "- The translated word in Arabic.",
-                "- A list of up to 5 relevant synonyms in Arabic (target language).",
-                "- A list of up to 5 relevant synonyms in English (source language).",
-                "- The English definition of the original word.",
-                "- An example sentence using the original word in English.",
+                f"- The translated word in {target_language} as the user will specify.",
+                f"- A list of up to 5 relevant synonyms in {target_language}.",
+                f"- A list of up to 5 relevant synonyms in {source_language}.",
+                f"- The definition of the original word in {target_language}.",
+                f"- An example sentence using the original word in {target_language}.",
                 "Your output must be a valid JSON object exactly matching the following Pydantic schema:",
                 f"```json\n{schema_json_string}\n```", # تضمين الـ schema في الـ prompt
                 "Do not add any extra text before or after the JSON.",
@@ -172,7 +187,7 @@ async def translate_word_endpoint(input_data: TranslationInput):
     Expects a JSON body with 'word' and 'context'.
     Returns a JSON object with translation details, synonyms, definition, and example usage.
     """
-    messages = build_translation_messages(input_data.word, input_data.context)
+    messages = build_translation_messages(input_data.word, input_data.source_language, input_data.target_language, input_data.context)
 
     try:
         # استدعاء نموذج Gemini
