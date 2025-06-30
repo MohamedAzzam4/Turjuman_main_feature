@@ -15,14 +15,14 @@ import uvicorn
 
 # نموذج لمدخلات الـ API
 class TranslationInput(BaseModel):
-    source_language: str = Field(
+    srcLang: str = Field(
         ...,
         min_length=1,
         max_length=100,
         description="The source language needed to be translated from."
     )
     
-    target_language: str = Field(
+    targetLang: str = Field(
         ...,
         min_length=1,
         max_length=100,
@@ -50,31 +50,31 @@ class Translation(BaseModel):
         ...,
         min_length=1, # يمكن تكون كلمة واحدة
         max_length=255,
-        description="The translated word in the target language (Arabic), based on the provided context."
+        description="The translated word in the target language , based on the provided context."
     )
     target_synonyms: List[str] = Field(
         ...,
         min_items=0, # ممكن تكون القائمة فاضية لو النموذج معرفش يجيب مرادفات
         max_items=5,
-        description="Different synonymous words in Arabic, relevant to the context. No duplicates."
+        description="Different synonymous words in targeted language, relevant to the context. No duplicates."
     )
     source_synonyms: List[str] = Field(
         ...,
         min_items=0, # ممكن تكون القائمة فاضية
         max_items=5,
-        description="Synonyms of the word in English. No duplicates."
+        description="Synonyms of the word in source_language. No duplicates."
     )
     definition: str = Field(
         ...,
         min_length=5,
         max_length=500, # زودت الحد الأقصى للتعريف شوية
-        description="Definition of the original word in English."
+        description="Definition of the original word in Source language."
     )
-    example_usage: str = Field(
+    example_usage: List[str] = Field(
         ...,
-        min_length=5,
-        max_length=500, # زودت الحد الأقصى للمثال شوية
-        description="An example sentence or phrase using the word to demonstrate its usage in context in English."
+        min_items=1,
+        max_items=4, # زودت الحد الأقصى للمثال شوية
+        description="A several examples sentences or phrases using the word to demonstrate its usage in context in source language."
     )
 
 
@@ -93,11 +93,11 @@ def parse_json(text):
             print(f"json_repair failed: {e}") # طباعة الخطأ للمساعدة في Debug
             return None
 
-def build_translation_messages(word: str, source_language: str, target_language: str, context: Optional[str] = None) -> List[dict]:
+def build_translation_messages(word: str, srcLang: str, targetLang: str, context: Optional[str] = None) -> List[dict]:
     """Builds the message list for the Gemini API call."""
     # استخدام model_json_schema() في Pydantic V2 للحصول على الـ schema
     schema_json_string = json.dumps(Translation.model_json_schema(), ensure_ascii=False, indent=2)
-    user_message = f"source_language: {target_language.strip()}, target_Language: {target_language.strip()} , Word: {word.strip()}"
+    user_message = f"srcLang: {targetLang.strip()}, target_Language: {targetLang.strip()} , Word: {word.strip()}"
     if context:
         user_message = f"Context: {context.strip()}\n" + user_message
 
@@ -105,15 +105,15 @@ def build_translation_messages(word: str, source_language: str, target_language:
         {
             "role": "system",
             "content": "\n".join([
-                f"You are a professional translator from {source_language} to {target_language}.",
-                f"You will be provided with a word in {source_language} and its context is optional.",
+                f"You are a professional translator from {srcLang} to {targetLang}.",
+                f"You will be provided with a word in {srcLang} and its context is optional.",
                 "Translate the word based on the context.",
                 "Provide:",
-                f"- The translated word in {target_language} as the user will specify.",
-                f"- A list of up to 5 relevant synonyms in {target_language}.",
-                f"- A list of up to 5 relevant synonyms in {source_language}.",
-                f"- The definition of the original word in {target_language}.",
-                f"- An example sentence using the original word in {target_language}.",
+                f"- The translated word in {targetLang} as the user will specify.",
+                f"- A list of up to 5 relevant synonyms in {targetLang}.",
+                f"- A list of up to 5 relevant synonyms in {srcLang}.",
+                f"- The definition of the original word in {srcLang}.",
+                f"- A several examples or sentences using the original word in {srcLang}.",
                 "Your output must be a valid JSON object exactly matching the following Pydantic schema:",
                 f"```json\n{schema_json_string}\n```", # تضمين الـ schema في الـ prompt
                 "Do not add any extra text before or after the JSON.",
@@ -159,13 +159,15 @@ except Exception as e:
 
 # --- FastAPI App Setup ---
 
-app = FastAPI(
-)
+app = FastAPI()
 
-# إضافة CORS middleware
+origins = [
+    "https://www.turjuman.online",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # اسمح بكل المواقع (يمكن تغييرها لنطاقات محددة لاحقًا)
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -187,7 +189,7 @@ async def translate_word_endpoint(input_data: TranslationInput):
     Expects a JSON body with 'word' and 'context'.
     Returns a JSON object with translation details, synonyms, definition, and example usage.
     """
-    messages = build_translation_messages(input_data.word, input_data.source_language, input_data.target_language, input_data.context)
+    messages = build_translation_messages(input_data.word, input_data.srcLang, input_data.targetLang, input_data.context)
 
     try:
         # استدعاء نموذج Gemini
