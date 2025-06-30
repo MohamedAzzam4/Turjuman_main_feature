@@ -73,8 +73,8 @@ class Translation(BaseModel):
     example_usage: List[str] = Field(
         ...,
         min_items=1,
-        max_items=4, # زودت الحد الأقصى للمثال شوية
-        description="A several examples sentences or phrases using the word to demonstrate its usage in context in source language."
+        max_items=3, # زودت الحد الأقصى للمثال شوية
+        description="Several examples sentences or phrases using the word to demonstrate its usage in context in source language."
     )
 
 
