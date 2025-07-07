@@ -5,3 +5,4 @@ langchain # استخدم إصدار محدد أو الأحدث
 langchain-google-genai # استخدم إصدار محدد أو الأحدث
 pydantic # استخدم إصدار محدد (مطلوب لـ FastAPI و Langchain)
 json-repair==0.29.1 # استخدم إصدار محدد
+openai
