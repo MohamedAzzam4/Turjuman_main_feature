@@ -10,9 +10,20 @@ import json_repair
 from langchain_google_genai import ChatGoogleGenerativeAI # استخدام المكتبة الصحيحة لـ Gemini مع Langchain
 import json # لإضافة الـ schema في الـ prompt
 import uvicorn
+import openai
+
+
+load_dotenv()
+ROUTER_API_KEY = os.getenv("ROUTER_API_KEY")
+llm = 'google/gemini-2.5-flash-lite-preview-06-17'
+
+client = openai.OpenAI(
+    api_key= ROUTER_API_KEY,
+    base_url= "https://router.requesty.ai/v1",
+    default_headers= {"Authorization": f"Bearer {ROUTER_API_KEY}"}
+)
 
 # --- Pydantic Models ---
-
 # نموذج لمدخلات الـ API
 class TranslationInput(BaseModel):
     srcLang: str = Field(
@@ -73,8 +84,8 @@ class Translation(BaseModel):
     example_usage: List[str] = Field(
         ...,
         min_items=1,
-        max_items=3, # زودت الحد الأقصى للمثال شوية
-        description="Several examples sentences or phrases using the word to demonstrate its usage in context in source language."
+        max_items=4, # زودت الحد الأقصى للمثال شوية
+        description="A several examples sentences or phrases using the word to demonstrate its usage in context in source language."
     )
 
 
@@ -126,36 +137,7 @@ def build_translation_messages(word: str, srcLang: str, targetLang: str, context
     ]
     return messages
 
-# --- Environment Setup & Model Initialization ---
 
-# تحميل متغيرات البيئة من ملف .env (لو موجود)
-load_dotenv()
-
-# الحصول على مفتاح API من متغير البيئة
-# استخدم نفس الاسم اللي استخدمته في الـ script الأول
-gemini_api_key = os.getenv("GEMINI_API_KEY")
-
-if not gemini_api_key:
-    # لو المفتاح مش موجود في متغيرات البيئة، ارفع خطأ
-    # Railway هيتعرف على هذا الخطأ وهيفهم أن فيه مشكلة في التهيئة
-    print("Error: GEMINI_API_KEY environment variable is not set.")
-    print("Please set the GEMINI_API_KEY environment variable in your Railway project settings.")
-    # يمكن استخدام sys.exit(1) هنا لو عايز التطبيق يفشل بسرعة لو المتغير مش موجود
-    # لكن رفع Exception هو الطريقة القياسية في تهيئة التطبيقات
-    raise ValueError("GEMINI_API_KEY environment variable is missing.")
-
-# تهيئة نموذج Gemini (هتتم مرة واحدة عند بدء تشغيل التطبيق)
-try:
-    gemini_model = ChatGoogleGenerativeAI(
-        model="models/gemini-1.5-flash",
-        temperature=0.5,
-        google_api_key=gemini_api_key # استخدام المفتاح من متغير البيئة
-    )
-    print("Gemini model initialized successfully.")
-except Exception as e:
-    print(f"Error initializing Gemini model: {e}")
-    # لو فشلت التهيئة هنا، التطبيق مش هيشتغل
-    raise
 
 # --- FastAPI App Setup ---
 
@@ -190,13 +172,17 @@ async def translate_word_endpoint(input_data: TranslationInput):
     Returns a JSON object with translation details, synonyms, definition, and example usage.
     """
     messages = build_translation_messages(input_data.word, input_data.srcLang, input_data.targetLang, input_data.context)
-
+    #print(messages)
     try:
-        # استدعاء نموذج Gemini
-        gemini_response = gemini_model.invoke(messages)
+
+        response = client.chat.completions.create(
+                model = llm,
+                messages=  messages
+            )
 
         # الحصول على محتوى الرد وتنظيفه من المسافات البيضاء الزائدة
-        raw_json_string = gemini_response.content.strip()
+        llm_response = response.choices[0].message.content
+        raw_json_string = llm_response
 
         # محاولة تحليل JSON (مع إصلاح الأخطاء المحتملة)
         parsed_data = parse_json(raw_json_string)
@@ -223,14 +209,14 @@ async def translate_word_endpoint(input_data: TranslationInput):
         print(f"Problematic JSON data: {parsed_data}") # اطبع البيانات اللي سببت الخطأ
         raise HTTPException(
             status_code=500,
-            detail=f"Language model returned data that doesn't match the expected structure: {e.errors()}"
+            detail=f"Turjuman Model returned data that doesn't match the expected structure"
         )
     except Exception as e:
         # Catch any other unexpected errors
-        print(f"An unexpected error occurred: {e}")
+        print(f"An unexpected error occurred:")
         raise HTTPException(
             status_code=500,
-            detail=f"An internal error occurred during translation: {e}"
+            detail=f"An internal error occurred during translation"
         )
 if __name__ == "__main__":
     # حاول تقرأ البورت من متغير البيئة PORT، لو مش موجود استخدم 8080
